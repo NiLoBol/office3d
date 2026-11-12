@@ -82,6 +82,13 @@
   .lg code{color:#9fe0ff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lg .v{color:var(--gold);flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lg.empty{color:#6d8497;border-top:0}
+  .devs{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);color:#dbe8f3;
+    border-radius:10px;padding:6px 9px;font:inherit;font-size:11.5px;cursor:pointer}
+  .chip.on{border-color:#7ec86f;color:#dff7db}
+  .chip b{font-weight:650}
+  .chip span{color:var(--dim);font-size:10px}
+  body.night{background:radial-gradient(120% 80% at 50% 0%,#0a1522 0%,#050a10 62%)}
   footer{color:#66798c;font-size:10.5px;text-align:center;padding:14px 16px 22px;line-height:1.6}
 </style>
 
@@ -96,6 +103,7 @@
   <div id="fallback"></div>
   <div id="labels"></div>
   <div id="tools">
+    <button id="btnNight" title="โหมดกลางคืน">🌙</button>
     <button id="btnReset" title="จัดมุมใหม่">⤾</button>
     <button id="btnLabels" class="on" title="ชื่อห้อง">🏷</button>
     <button id="btnSim" title="จำลองผู้ส่งข้อมูล">▶</button>
@@ -112,6 +120,9 @@
 <div id="sheet">
   <div class="sect"><h2>ตัวต่อที่ต่ออยู่</h2><span>สลับ = ถอด/ต่อโมดูล</span></div>
   <div id="cards"></div>
+
+  <div class="sect" style="margin-top:12px"><h2>อุปกรณ์</h2><span>เพิ่มใน plan.js = ได้เลย</span></div>
+  <div id="devices" class="devs"></div>
 
   <div class="api">
     <div class="hd"><b>API / MCP — ส่งสัญญาณเข้า</b><span class="badge">demo</span>
@@ -137,6 +148,7 @@
 <script src="lib/smarthome/light.js"></script>
 <script src="lib/smarthome/meeting.js"></script>
 <script src="lib/smarthome/parking.js"></script>
+<script src="lib/smarthome/device.js"></script>
 <script src="lib/smarthome/index.js"></script>
 <script src="plan.js"></script>
 <script src="demo/app.js"></script>

@@ -58,5 +58,14 @@ window.OFFICE_PLAN = {
   extraLights: [
     { id: 'corridor-a', x: 12, z: 11.5, bind: '/lights/corridor' },
     { id: 'corridor-b', x: 30, z: 11.5, bind: '/lights/corridor2' }
+  ],
+
+  /* อุปกรณ์ทั่วไป (config-driven): type + path + ตำแหน่งปักหมุด
+     type: light | door | climate | sensor | lock | generic — สี/สถานะอ่านจาก path */
+  devices: [
+    { id: 'door-main', type: 'door', label: 'ประตูหน้า', path: '/door/main', x: 40.4, z: 11.5 },
+    { id: 'ac-sales', type: 'climate', label: 'แอร์ฝ่ายขาย', path: '/climate/sales', x: 3.2, z: 14.6 },
+    { id: 'sensor-entry', type: 'sensor', label: 'เซนเซอร์ทางเข้า', path: '/sensor/entry', x: 37.8, z: 12.3 },
+    { id: 'lock-store', type: 'lock', label: 'ล็อกสโตร์', path: '/lock/store', x: 33.5, z: 1.4 }
   ]
 };

@@ -7,7 +7,7 @@
   window.__ERRS = [];
   window.addEventListener('error', function (e) { window.__ERRS.push(String((e && e.message) || e)); });
 
-  var scene, cam, renderer, board, widgets, propMat;
+  var scene, cam, renderer, board, widgets, propMat, hemi, d1, d2, amb, nightMode = false;
   var raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
   var cv, stageEl, labelsEl, cardsEl, popEl, toastEl, statEl;
   var theta = 0.3, phi = 0.8, dist = 88, target = new THREE.Vector3(33, 0, 12);
@@ -34,10 +34,11 @@
 
     scene = new THREE.Scene();
     cam = new THREE.PerspectiveCamera(38, 1, 0.4, 900);
-    scene.add(new THREE.HemisphereLight(0xdcebff, 0x3a4550, 1.05));
-    var d1 = new THREE.DirectionalLight(0xfff0d8, 1.85); d1.position.set(50, 80, 34); scene.add(d1);
-    var d2 = new THREE.DirectionalLight(0x9dc2ff, 0.7); d2.position.set(-40, 45, -46); scene.add(d2);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+    hemi = new THREE.HemisphereLight(0xdcebff, 0x3a4550, 0.55); scene.add(hemi);
+    d1 = new THREE.DirectionalLight(0xfff0d8, 1.15); d1.position.set(50, 80, 34); scene.add(d1);
+    d2 = new THREE.DirectionalLight(0x9dc2ff, 0.3); d2.position.set(-40, 45, -46); scene.add(d2);
+    amb = new THREE.AmbientLight(0xffffff, 0.05); scene.add(amb);
+    if (THREE.ACESFilmicToneMapping) { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; }
     propMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0.12 });
 
     board = O3D.buildBoard(P);
@@ -97,14 +98,20 @@
     s['/meeting/mr1/until'] = '17:30';
     s['/meeting/mr2/count'] = 0;
     s['/parking/gate'] = false;
+    s['/door/main'] = true;
+    s['/climate/sales'] = true;
+    s['/sensor/entry'] = false;
+    s['/lock/store'] = false;
     [1, 2, 4, 7, 9].forEach(function (n) { s['/parking/slot/' + n + '/occupied'] = true; });
     seeding = true;
     if (widgets.meeting) widgets.meeting.instant = true;
     if (widgets.parking) widgets.parking.instant = true;
+    if (widgets.light) widgets.light.instant = true;
     BUS.patch(s, 'seed');
     seeding = false;
     if (widgets.meeting) widgets.meeting.instant = false;
     if (widgets.parking) widgets.parking.instant = false;
+    if (widgets.light) widgets.light.instant = false;
   }
 
   /* ---------------- ป้ายชื่อห้อง ---------------- */
@@ -178,6 +185,8 @@
     el = document.getElementById('st-parking');
     if (el) el.textContent = 'ว่าง ' + Pk.free + '/' + Pk.total + ' ช่อง' + (Pk.gate ? ' · ไม้กั้นเปิด' : '');
 
+    renderDevices();
+
     ['light', 'meeting', 'parking'].forEach(function (id) {
       var card = document.querySelector('.card[data-mod="' + id + '"]');
       if (card && widgets[id]) card.classList.toggle('off', !widgets[id].enabled);
@@ -187,8 +196,19 @@
     renderLog();
   }
 
-  function renderLog() {
-    var el = document.getElementById('log');
+  function renderDevices() {
+    var host = document.getElementById('devices');
+    if (!host) return;
+    if (!widgets.devices) { host.innerHTML = ''; return; }
+    host.innerHTML = widgets.devices.list.map(function (d) {
+      var v = widgets.devices.values[d.path];
+      var on = v === true || (typeof v === 'number' && v > 0);
+      var txt = (v === null || v === undefined) ? '—' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+      return '<button class="chip' + (on ? ' on' : '') + '" data-path="' + d.path + '"><b>' + d.label + '</b><span>' + txt + '</span></button>';
+    }).join('');
+  }
+
+  function renderLog() {    var el = document.getElementById('log');
     if (!el) return;
     var rows = BUS.log().slice(0, 6).map(function (e) {
       var val = JSON.stringify(e.value);
@@ -198,9 +218,22 @@
     el.innerHTML = rows.join('') || '<div class="lg empty">ยังไม่มีสัญญาณเข้ามา</div>';
   }
 
+  function applyNight() {
+    hemi.intensity = nightMode ? 0.12 : 0.55;
+    d1.intensity = nightMode ? 0.16 : 1.15;
+    d2.intensity = nightMode ? 0.06 : 0.3;
+    amb.intensity = nightMode ? 0.015 : 0.05;
+  }
+
   function bindUI() {
     document.getElementById('btnReset').addEventListener('click', function () {
       theta = 0.3; phi = 0.8; dist = 88; target.set(33, 0, 12);
+    });
+    document.getElementById('btnNight').addEventListener('click', function () {
+      nightMode = !nightMode;
+      this.classList.toggle('on', nightMode);
+      document.body.classList.toggle('night', nightMode);
+      applyNight();
     });
     document.getElementById('btnLabels').addEventListener('click', function () {
       labelsOn = !labelsOn; this.classList.toggle('on', labelsOn);
@@ -222,6 +255,11 @@
       }
     });
     document.getElementById('popX').addEventListener('click', hidePop);
+    var devHost = document.getElementById('devices');
+    if (devHost) devHost.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-path]') : null;
+      if (b && widgets.devices) widgets.devices.toggle(b.dataset.path);
+    });
     cardsEl.addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button[data-act]') : null;
       if (b) doAction(b.dataset.act);
