@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Smart Home board — ตัวอย่างการใช้ lib</title>
+<style>
+  :root{--bg:#0b131d;--panel:#131f2c;--line:#243546;--txt:#e8f1f8;--dim:#8aa0b4;--acc:#5ec8ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 80% at 50% 0%,#16273a,#0b131d 62%);color:var(--txt);
+    font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:12px 14px 6px}
+  h1{margin:0;font-size:18px;font-weight:800} h1 em{font-style:normal;color:var(--acc)}
+  p.note{margin:4px 0 0;color:var(--dim);font-size:11.5px}
+  #stage{margin:0 10px;border-radius:14px;overflow:hidden;background:#0e1826;box-shadow:inset 0 0 0 1px var(--line)}
+  #cv{display:block;width:100%;height:46vh;min-height:280px;touch-action:none}
+  #rooms{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px}
+  .rm{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-width:140px}
+  .rm b{font-size:12.5px;display:block;margin-bottom:4px}
+  .rm code{font-size:10px;color:#9fe0ff}
+  .rm button{margin-top:6px;width:100%;background:#1b2c3d;border:1px solid var(--line);color:#dceaf5;
+    border-radius:8px;padding:6px 8px;font:inherit;font-size:11.5px;cursor:pointer}
+  .api{padding:0 12px 16px}
+  .api .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .api .row{display:flex;gap:6px}
+  .api input{flex:1;background:#0d1a25;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:7px 9px;font:inherit;font-size:12px}
+  .api button{background:#173d52;border:1px solid var(--acc);color:#dff4ff;border-radius:8px;padding:7px 12px;font:inherit;font-size:12px;cursor:pointer}
+  #msg{color:var(--dim);font-size:11px;margin-top:6px;min-height:15px}
+  footer{color:#66798c;font-size:10.5px;text-align:center;padding:8px 16px 22px}
+</style>
+<body>
+<header>
+  <h1>Smart Home <em>board</em></h1>
+  <p class="note">ตัวอย่างก้อน lib: `O3D.buildBoard(plan)` + `O3D.SmartHome.Light` — ไม่มีออฟฟิศ/ที่จอดในไฟล์นี้</p>
+</header>
+<div id="stage"><canvas id="cv"></canvas></div>
+<div id="rooms"></div>
+<div class="api"><div class="box">
+  <div class="row"><input id="base" placeholder="https://api.example.com (ว่าง = เดโมในเครื่อง)" autocomplete="off">
+  <button id="conn">ต่อ API</button></div>
+  <div id="msg">ยังไม่ต่อ API · กดปุ่มไฟด้านบน = จำลองสัญญาณเข้า</div>
+</div></div>
+<footer>path ทุกจุดอยู่ใน <code>plan</code> · เปิด <code>docs/LIB.md</code> ดูวิธีใช้</footer>
+
+<script src="../vendor/three.min.js"></script>
+<script src="../lib/core/bus.js"></script>
+<script src="../lib/core/kit.js"></script>
+<script src="../lib/core/motion.js"></script>
+<script src="../lib/core/board.js"></script>
+<script src="../lib/core/api.js"></script>
+<script src="../lib/smarthome/light.js"></script>
+<script>
+(function () {
+  var P = {
+    name: 'บ้านตัวอย่าง',
+    building: { x: 0, z: 0, w: 20, d: 16, wallH: 2.9, wallT: 0.2 },
+    corridor: { x: 0, z: 7, w: 20, d: 3, label: 'โถง', floor: 0xc9ab84 },
+    entrance: { side: 'x1', from: 7.4, to: 9.6 },
+    windows: [
+      { side: 'z1', from: 2, to: 8 }, { side: 'z1', from: 12, to: 18 },
+      { side: 'z0', from: 2, to: 8 }, { side: 'z0', from: 12, to: 18 },
+      { side: 'x0', from: 1, to: 5 }, { side: 'x0', from: 11, to: 15 }
+    ],
+    rooms: [
+      { id: 'living', label: 'ห้องนั่งเล่น', type: 'empty', x: 0, z: 10, w: 10, d: 6, door: { side: 'z0' }, bind: { light: '/home/living/light' } },
+      { id: 'kitchen', label: 'ครัว', type: 'empty', x: 10, z: 10, w: 10, d: 6, door: { side: 'z0' }, bind: { light: '/home/kitchen/light' } },
+      { id: 'bed1', label: 'ห้องนอน 1', type: 'empty', x: 0, z: 0, w: 10, d: 7, door: { side: 'z1' }, bind: { light: '/home/bed1/light' } },
+      { id: 'bed2', label: 'ห้องนอน 2', type: 'empty', x: 10, z: 0, w: 10, d: 7, door: { side: 'z1' }, bind: { light: '/home/bed2/light' } }
+    ],
+    extraLights: [{ id: 'hall', x: 10, z: 8.5, bind: '/home/hall/light' }]
+  };
+
+  var bus = window.OfficeBus;
+  var cv = document.getElementById('cv');
+  var renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+  if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
+
+  var scene = new THREE.Scene();
+  var cam = new THREE.PerspectiveCamera(38, 1, 0.4, 600);
+  scene.add(new THREE.HemisphereLight(0xdcebff, 0x3a4550, 0.8));
+  var d1 = new THREE.DirectionalLight(0xfff0d8, 1.3); d1.position.set(30, 50, 24); scene.add(d1);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.12));
+
+  var board = O3D.buildBoard(P);
+  scene.add(board.group);
+  var propMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
+  var light = new O3D.SmartHome.Light({ board: board, bus: bus, onChange: renderUI });
+
+  var theta = 0.4, phi = 0.8, dist = 46, target = new THREE.Vector3(10, 0, 8);
+
+  function draw() {
+    var sp = Math.sin(phi);
+    cam.position.set(target.x + dist * sp * Math.sin(theta), target.y + dist * Math.cos(phi), target.z + dist * sp * Math.cos(theta));
+    cam.lookAt(target);
+    renderer.render(scene, cam);
+  }
+  function resize() {
+    var r = cv.getBoundingClientRect();
+    renderer.setSize(r.width, Math.max(240, r.height), false);
+    cam.aspect = r.width / Math.max(240, r.height);
+    cam.updateProjectionMatrix();
+    draw();
+  }
+  addEventListener('resize', resize);
+
+  function renderUI() {
+    var host = document.getElementById('rooms');
+    host.innerHTML = board.lights.map(function (l) {
+      var on = light.values[l.path];
+      return '<div class="rm"><b>' + (l.room === 'corridor' ? 'โถง' : l.room) + '</b>' +
+        '<code>' + l.path + '</code>' +
+        '<button data-path="' + l.path + '">' + (on ? 'ปิดไฟ' : 'เปิดไฟ') + '</button></div>';
+    }).join('');
+  }
+  document.getElementById('rooms').addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-path]');
+    if (b) bus.set(b.dataset.path, !bus.get(b.dataset.path), 'ui');
+  });
+
+  document.getElementById('conn').addEventListener('click', function () {
+    var base = document.getElementById('base').value.trim();
+    var msg = document.getElementById('msg');
+    if (!base) { msg.textContent = 'ยังไม่ต่อ API · ใช้เดโมในเครื่อง'; return; }
+    msg.textContent = 'กำลังต่อ ' + base + ' …';
+    var c = OfficeAPI.connect({
+      base: base, bus: bus,
+      onReady: function () { msg.textContent = 'ต่อแล้ว: ' + c.mode; },
+      onError: function (e) { msg.textContent = 'ต่อไม่ได้: ' + e.error; }
+    });
+  });
+
+  bus.subscribe(function (path, value) {
+    if (path.indexOf('/home/') === 0) renderUI();
+  });
+  bus.set('/home/living/light', true, 'seed');
+  bus.set('/home/hall/light', true, 'seed');
+
+  resize();
+  renderUI();
+  (function loop() {
+    requestAnimationFrame(loop);
+    Motion.update(0.016);
+    light.tick(0.016);
+    draw();
+  })();
+
+  window.__probe = function () { return { state: bus.snapshot().state, lights: board.lights.length, calls: renderer.info.render.calls, tri: renderer.info.render.triangles, errs: [] }; };
+})();
+</script>
+</body>
+</html>
