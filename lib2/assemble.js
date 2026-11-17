@@ -9,6 +9,12 @@
     var plan = ctx.plan || window.OFFICE2;
     var groups = {}, colliders = [], problems = [], spaces = plan.rooms.concat([plan.corridor]);
 
+    /* ชั้นสัญญาณ (path → value) — v1 contract; ไม่มี base = เดโมในเครื่อง */
+    if (O.signals && !ctx.signals) {
+      var cfgApi = plan.api || {};
+      ctx.signals = O.signals.create({ base: cfgApi.base || '', token: cfgApi.token || '', demo: !cfgApi.base });
+    }
+
     function add(name, res) {
       if (!res || !res.group) return null;
       groups[name] = res.group;
@@ -38,9 +44,13 @@
       });
     });
 
+    var st = null;
+    if (O.status) st = safe('status', function () { return O.status.build(ctx); });
+
     var L = null;
     if (O.lighting) L = safe('lighting', function () { return O.lighting.build(ctx); }) || null;
 
-    return { groups: groups, colliders: colliders, lighting: L, shellTop: shellTop, spaces: spaces, problems: problems };
+    return { groups: groups, colliders: colliders, lighting: L, status: st, signals: ctx.signals || null,
+             shellTop: shellTop, spaces: spaces, problems: problems };
   };
 })();

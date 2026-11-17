@@ -10,6 +10,9 @@ window.OFFICE2 = {
   building: { x: 0, z: 0, w: 34, d: 22, wallH: 3.05, tExt: 0.24, tInt: 0.12, slab: 0.22 },
   entrance: { side: 'x0', from: 9.8, to: 12.2, type: 'double-glass', h: 2.4 },
   spawn: { x: 2.0, z: 11.0, yaw: -Math.PI / 2 },
+  /* ชั้นสัญญาณ: ใส่ base/token ของระบบบริษัท (GET /api/state + SSE /api/state/stream)
+     เว้น base = โหมดเดโมจำลองการจอง/ไฟในเครื่อง · override ได้ทาง ?api=URL&token=... */
+  api: { base: '', token: '', demo: true },
   corridor: { id: 'corridor', label: 'โถงทางเดิน', x: 0, z: 9.5, w: 34, d: 3,
     floor: 'floor.tile.polished', furn: 'corridor' },
 

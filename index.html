@@ -28,6 +28,16 @@
   .chip.on{color:#ffe9c9;border-color:rgba(255,214,140,.5);background:rgba(60,44,20,.55)}
   #go{pointer-events:auto;border:1px solid var(--line);background:var(--panel);color:var(--txt);border-radius:11px;
     min-height:34px;padding:0 8px;font:inherit;font-size:11px;backdrop-filter:blur(8px);max-width:118px;flex:none}
+  #mrow{position:absolute;left:10px;right:10px;bottom:52px;display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;
+    flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;pointer-events:auto}
+  #mrow::-webkit-scrollbar{display:none}
+  .mchip{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;
+    background:rgba(12,22,32,.82);backdrop-filter:blur(8px);padding:0 10px;min-height:32px;font:inherit;font-size:10.5px;
+    color:#cfe0ee;cursor:pointer}
+  .mchip i{width:8px;height:8px;border-radius:50%;background:#2fd06a;flex:none}
+  .mchip.busy i{background:#ff5a4a}
+  .mchip.soon i{background:#ffc657}
+  .mchip b{font-weight:650;color:#eaf4fb}
   #room{position:absolute;left:50%;top:52px;transform:translateX(-50%);font-size:12px;color:#cfe6f6;
     background:rgba(9,17,26,.62);border:1px solid var(--line);border-radius:999px;padding:4px 12px;opacity:0;transition:.2s}
   #room.show{opacity:1}
@@ -45,6 +55,8 @@
 <script src="plan2.js"></script>
 <script src="lib2/util.js"></script>
 <script src="lib2/materials.js"></script>
+<script src="lib2/signals.js"></script>
+<script src="lib2/status.js"></script>
 <script src="lib2/assemble.js"></script>
 <script>window.__mods = {};</script>
 <script src="lib2/structure.js" onerror="__mods.structure='missing'"></script>
@@ -65,6 +77,7 @@
   <div id="room"></div>
   <div id="err"></div>
   <div id="cross"></div>
+  <div id="mrow"></div>
   <div id="bar"><div id="lights"></div></div>
   <div id="hint">ลากซ้าย = เดิน · ลากขวา = มอง · วนซ้าย/ขวาแบบภาพรวม</div>
   <div id="load">กำลังประกอบฉาก…</div>
@@ -94,6 +107,11 @@
   camera.position.set(-8, 12, 26);
 
   /* ── ประกอบฉาก ─────────────────────────────────────────── */
+  /* ต่อกับระบบบริษัทได้ทาง query: ?api=https://host&token=XXX (เว้นว่าง = โหมดเดโม) */
+  try {
+    var qs = new URLSearchParams(location.search);
+    if (qs.get('api')) { plan.api = plan.api || {}; plan.api.base = qs.get('api'); plan.api.token = qs.get('token') || ''; }
+  } catch (e) { }
   var ctx = { THREE: THREE, plan: plan, mats: O.mats, util: O.util, renderer: renderer, scene: scene };
   var A = O.assemble(ctx);
   var colliders = A.colliders, groups = A.groups, shellTop = A.shellTop, L = A.lighting;
@@ -126,7 +144,17 @@
   if (O.walk) {
     try {
       walk = O.walk.create({ THREE: THREE, camera: camera, canvas: canvas, colliders: colliders, spawn: plan.spawn, scene: scene });
-      if (walk.onRoom) walk.onRoom(function (sp) { if (sp) { roomEl.textContent = sp.label; roomEl.classList.add('show'); } else roomEl.classList.remove('show'); });
+      if (walk.onRoom) walk.onRoom(function (sp) {
+        if (!sp) { roomEl.classList.remove('show'); return; }
+        var txt = sp.label;
+        if (SIG && sp.furn === 'meeting') {
+          var st = SIG.get('/meeting/' + sp.id + '/state');
+          txt += st === 'busy'
+            ? ' · ไม่ว่าง · ' + (SIG.get('/meeting/' + sp.id + '/who') || '—') + ' ถึง ' + (SIG.get('/meeting/' + sp.id + '/until') || '-')
+            : ' · ว่าง';
+        }
+        roomEl.textContent = txt; roomEl.classList.add('show');
+      });
       if (walk.onInteract) walk.onInteract(function (obj) { if (obj && obj.userData && obj.userData.path) toast(obj.userData.path); });
     } catch (e) { fail('โหมดเดินพัง: ' + e.message); walk = null; }
   }
@@ -154,30 +182,29 @@
   }
   bNight.onclick = function () { setNight(!night); };
 
-  /* ── ชิปไฟรายห้อง (ผูก path เดิมของ API/MCP) ────────────── */
-  var lightsEl = document.getElementById('lights');
+  /* ── ไฟรายห้อง: อ่าน/เขียน path /lights/<room> ผ่านชั้นสัญญาณ ──────── */
+  var SIG = A.signals, lightsEl = document.getElementById('lights'), chipOf = {};
+  function applyLight(id, on) {
+    if (L && L.hooks && L.hooks.setSpaceLight) L.hooks.setSpaceLight(id, on);
+    if (chipOf[id]) chipOf[id].classList.toggle('on', !!on);
+  }
   plan.rooms.concat([plan.corridor]).forEach(function (sp) {
-    var on = true;
+    var path = (sp.bind && sp.bind.light) || ('/lights/' + sp.id);
     var chip = document.createElement('button');
-    chip.className = 'chip on';
+    chip.className = 'chip';
     chip.innerHTML = '💡 ' + sp.label;
     chip.onclick = function () {
-      on = !on; chip.classList.toggle('on', on);
-      if (L && L.hooks && L.hooks.setSpaceLight) L.hooks.setSpaceLight(sp.id, on);
+      var cur = SIG ? SIG.get(path) : true;
+      if (SIG) SIG.push(path, !cur); else applyLight(sp.id, !cur);
     };
+    chipOf[sp.id] = chip;
     lightsEl.appendChild(chip);
+    if (SIG) SIG.subscribe(function (p, v) { if (p === path) applyLight(sp.id, v !== false); }, true);
   });
 
   /* ── ไปห้อง (teleport ในโหมดเดิน) ──────────────────────── */
   var allSpaces = plan.rooms.concat([plan.corridor]);
-  var go = document.createElement('select');
-  go.id = 'go';
-  go.appendChild(new Option('ไปห้อง…', ''));
-  allSpaces.forEach(function (sp) { go.appendChild(new Option(sp.label, sp.id)); });
-  document.getElementById('bar').appendChild(go);
-  go.onchange = function () {
-    var id = go.value; if (!id) return;
-    var sp = allSpaces.filter(function (s) { return s.id === id; })[0];
+  function gotoRoom(sp) {
     if (!sp) return;
     var x = sp.x + sp.w / 2, z = sp.z + sp.d / 2, yaw = 0;
     var d = sp.door;
@@ -189,8 +216,37 @@
     }
     if (mode !== 'walk') setMode('walk');
     if (walk) walk.teleport(x, z, yaw);
+  }
+  var go = document.createElement('select');
+  go.id = 'go';
+  go.appendChild(new Option('ไปห้อง…', ''));
+  allSpaces.forEach(function (sp) { go.appendChild(new Option(sp.label, sp.id)); });
+  document.getElementById('bar').appendChild(go);
+  go.onchange = function () {
+    gotoRoom(allSpaces.filter(function (s) { return s.id === go.value; })[0]);
     go.value = '';
   };
+
+  /* ── แถวสถานะห้องประชุม: ว่าง/ใครจอง/ถึงกี่โมง/กี่คน ───────── */
+  function paintM(sp) {
+    var c = mChip[sp.id]; if (!c) return;
+    var st = SIG ? SIG.get('/meeting/' + sp.id + '/state') : 'free';
+    var who = SIG ? (SIG.get('/meeting/' + sp.id + '/who') || '') : '';
+    var until = SIG ? (SIG.get('/meeting/' + sp.id + '/until') || '') : '';
+    var n = SIG ? (SIG.get('/meeting/' + sp.id + '/count') || 0) : 0;
+    c.className = 'mchip' + (st === 'busy' ? ' busy' : (st === 'soon' ? ' soon' : ''));
+    c.innerHTML = '<i></i><b>' + sp.label + '</b><span>' +
+      (st === 'busy' ? (who || 'จองแล้ว') + ' · ถึง ' + (until || '-') + ' · ' + n + ' คน' : 'ว่าง') + '</span>';
+  }
+  var mRow = document.getElementById('mrow'), mChip = {};
+  plan.rooms.filter(function (sp) { return sp.furn === 'meeting'; }).forEach(function (sp) {
+    var c = document.createElement('button');
+    c.className = 'mchip';
+    c.onclick = function () { gotoRoom(sp); };
+    mRow.appendChild(c); mChip[sp.id] = c;
+    if (SIG) SIG.subscribe(function (p) { if (p.indexOf('/meeting/' + sp.id + '/') === 0) paintM(sp); });
+    paintM(sp);
+  });
 
   /* ── อินพุตภาพรวม: ลากหมุน · pinch/ล้อ ซูม ─────────────── */
   var drag = null, pinch = null;
