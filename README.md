@@ -1,5 +1,10 @@
 # office3d — 3D board จากแปลน + ตัวต่อสัญญาณ (Smart Home / ERP)
 
+> **v2 (2026-11-17) — ปั้นใหม่ทั้งชุด + โหมดเดิน**
+> หน้าเว็บตอนนี้ (`index.html`) = ออฟฟิศ 3D ที่ **เดินเข้าไปข้างในได้** (first-person): `plan2.js` (อาคาร 34×22 ม. 8 ห้อง + โถง) · `lib2/` = `materials` `structure` `doors` `furniture-work` `furniture-meeting` `furniture-lounge` `lighting` `walk` `assemble` (โหลดเป็น `<script>` ต่อกัน ไม่มี build) · dev harness/ภาพตรวจ `v2/dev/*.html`, `v2/out/*.png` · ตัวเก่ายังอยู่ที่ **`v1.html`**
+> live: https://office3d.131199999.xyz (v2) · https://office3d.131199999.xyz/v1.html (ตัวเก่า)
+
+
 บอร์ด 3D ที่สร้างจาก **แปลน (plan)** แล้วผูกวัตถุกับ **path ของสถานะ** — ฝั่งนี้เป็นแค่
 "ที่รับค่า + ที่แสดงผล" ไม่มี logic ธุรกิจ · ใครจะส่งค่ามาก็ต่อได้ทาง **REST API** หรือ **MCP**
 ทุกอย่างเป็น JavaScript ล้วน + three.js ไม่ต้อง build ไม่ต้องมีเซิร์ฟเวอร์สำหรับตัวฉาก

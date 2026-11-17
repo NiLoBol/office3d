@@ -2,155 +2,249 @@
 <html lang="th">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>WRIS Office 3D — บอร์ด 3D + ตัวต่อสัญญาณ</title>
+<title>WRIS Office 3D v2 — เดินในออฟฟิศ</title>
 <style>
-  :root{--bg:#0b131d;--panel:#131f2c;--panel2:#182635;--line:#243546;--txt:#e8f1f8;--dim:#8aa0b4;--acc:#5ec8ff;--gold:#ffc657;--ok:#5fd68a;--bad:#ff7a72}
+  :root{--bg:#0a1017;--panel:rgba(14,24,34,.82);--line:rgba(150,190,220,.18);--txt:#e9f2f9;--dim:#8ea5b8;--acc:#5ec8ff;--gold:#ffc657}
   *{box-sizing:border-box}
-  html,body{margin:0;background:radial-gradient(120% 80% at 50% 0%,#16273a 0%,#0b131d 62%);color:var(--txt);
-    font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
-  header{display:flex;align-items:center;gap:10px;padding:11px 14px 7px}
-  h1{margin:0;font-size:18px;letter-spacing:.2px;font-weight:800}
-  h1 em{font-style:normal;color:var(--acc)}
-  #stat{margin-left:auto;color:var(--dim);font-size:11px;text-align:right;line-height:1.35}
-  #stage{position:relative;margin:0 10px;border-radius:16px;overflow:hidden;background:#0e1826;
-    box-shadow:0 8px 26px rgba(0,0,0,.45),inset 0 0 0 1px var(--line)}
-  #cv{display:block;width:100%;height:52vh;min-height:320px;touch-action:none;cursor:grab}
-  #cv:active{cursor:grabbing}
-  #labels{position:absolute;inset:0;pointer-events:none}
-  .lb{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;
-    font-size:11px;font-weight:650;color:#f2f7fb;background:rgba(11,19,29,.55);border:1px solid rgba(120,160,190,.22);
-    padding:2px 7px;border-radius:8px;backdrop-filter:blur(3px)}
-  #tools{position:absolute;right:9px;top:9px;display:flex;gap:6px}
-  #tools button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:rgba(19,31,44,.85);
-    color:var(--txt);font-size:15px;line-height:1;cursor:pointer;backdrop-filter:blur(6px)}
-  #tools button.on{border-color:var(--acc);color:var(--acc)}
-  #hint{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;color:#9db3c7;font-size:10.5px;
-    pointer-events:none;background:rgba(11,19,29,.66);border:1px solid rgba(120,160,190,.18);border-radius:999px;padding:3px 10px}
-  #toast{position:absolute;left:50%;top:12px;transform:translate(-50%,-14px);opacity:0;transition:.22s;
-    background:rgba(16,32,48,.94);border:1px solid var(--acc);color:#eaf6ff;font-size:11.5px;padding:6px 12px;
-    border-radius:999px;pointer-events:none;max-width:80%;text-align:center}
-  #toast.show{opacity:1;transform:translate(-50%,0)}
-  #fallback{display:none;width:100%;height:52vh;min-height:320px;align-items:center;justify-content:center;padding:24px;
-    color:#ffb0aa;font-size:13px;text-align:center;background:#101a26}
-  #pop{position:absolute;left:9px;right:9px;bottom:9px;background:rgba(15,28,40,.96);border:1px solid var(--line);
-    border-radius:14px;padding:10px 12px;backdrop-filter:blur(8px);box-shadow:0 8px 22px rgba(0,0,0,.5)}
-  #pop.hidden{display:none}
-  .ph{display:flex;align-items:center;gap:8px}
-  .ph b{font-size:13.5px}
-  #popX{margin-left:auto;background:transparent;border:0;color:var(--dim);font-size:16px;cursor:pointer;padding:2px 4px}
-  .pd{margin-top:3px;color:#a8c0d4;font-size:11.5px;line-height:1.7}
-  .pd code,.kv code{color:#9fe0ff;background:#0c1a26;border-radius:5px;padding:1px 5px;font-size:10.5px}
-  .pa{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-  .pa button,.acts button{border:1px solid var(--line);background:#1b2c3d;color:#dceaf5;border-radius:9px;
-    padding:6px 10px;font:inherit;font-size:11.5px;cursor:pointer}
-  .pa button:active,.acts button:active{transform:scale(.97)}
-  #sheet{padding:10px 12px 22px}
-  .sect{display:flex;align-items:baseline;gap:8px;margin:2px 2px 7px}
-  .sect h2{margin:0;font-size:13.5px;font-weight:750}
-  .sect span{color:var(--dim);font-size:11px}
-  #cards{display:flex;flex-direction:column;gap:8px}
-  .card{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);
-    border-radius:13px;padding:9px 10px}
-  .card.off{opacity:.5}
-  .ico{width:34px;height:34px;border-radius:10px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
-  .mid{flex:1;min-width:0}
-  .nm{font-weight:700;font-size:12.5px}
-  .badge{font-size:9.5px;font-weight:600;color:#9fb6c9;background:#0e1a26;border:1px solid var(--line);border-radius:6px;padding:1px 5px;margin-left:4px}
-  .st{color:var(--ok);font-size:11.5px;margin-top:1px}
-  .acts{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
-  .sw{position:relative;flex:none;width:38px;height:22px}
-  .sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
-  .sw span{position:absolute;inset:0;border-radius:999px;background:#2a3a4a;transition:.18s;pointer-events:none}
-  .sw span:after{content:'';position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#8fa3b5;transition:.18s}
-  .sw input:checked + span{background:#173d52}
-  .sw input:checked + span:after{left:18px;background:var(--acc)}
-  .api{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:10px}
-  .api .hd{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-  .api .hd b{font-size:12.5px}
-  .api .hd .badge{margin-left:0}
-  #copy{margin-left:auto;background:#1b2c3d;border:1px solid var(--line);color:#cfe3f3;border-radius:8px;
-    padding:4px 8px;font:inherit;font-size:10.5px;cursor:pointer}
-  .row{display:flex;gap:6px}
-  .row input[type=text]{background:#0d1a25;border:1px solid var(--line);color:var(--txt);border-radius:9px;
-    padding:8px 9px;font:inherit;font-size:12px;min-width:0}
-  #path{flex:1 1 52%}
-  #val{flex:0 1 30%}
-  #send{flex:none;background:#173d52;border:1px solid var(--acc);color:#dff4ff;border-radius:9px;padding:8px 12px;font:inherit;font-size:12px;cursor:pointer}
-  #log{margin-top:8px;display:flex;flex-direction:column;gap:4px}
-  .lg{display:flex;gap:7px;align-items:baseline;font-size:10.5px;color:#9fb6c9;border-top:1px dashed #1d2b3a;padding-top:4px}
-  .lg .t{color:#6d8497;flex:none}
-  .lg code{color:#9fe0ff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .lg .v{color:var(--gold);flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .lg.empty{color:#6d8497;border-top:0}
-  .devs{display:flex;flex-wrap:wrap;gap:6px}
-  .chip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);color:#dbe8f3;
-    border-radius:10px;padding:6px 9px;font:inherit;font-size:11.5px;cursor:pointer}
-  .chip.on{border-color:#7ec86f;color:#dff7db}
-  .chip b{font-weight:650}
-  .chip span{color:var(--dim);font-size:10px}
-  body.night{background:radial-gradient(120% 80% at 50% 0%,#0a1522 0%,#050a10 62%)}
-  footer{color:#66798c;font-size:10.5px;text-align:center;padding:14px 16px 22px;line-height:1.6}
+  html,body{margin:0;height:100%;overflow:hidden;background:#0a1017;color:var(--txt);
+    font:13px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+  #cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;background:#0a1017}
+  #hud{position:fixed;inset:0;pointer-events:none}
+  #top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:8px 10px;
+    background:linear-gradient(180deg,rgba(5,10,16,.82),rgba(5,10,16,0));}
+  #top b{font-size:13.5px;letter-spacing:.2px}
+  #top b em{font-style:normal;color:var(--acc)}
+  #stats{margin-left:auto;color:var(--dim);font-size:10.5px;text-align:right;font-variant-numeric:tabular-nums}
+  .btn{pointer-events:auto;border:1px solid var(--line);background:var(--panel);color:var(--txt);border-radius:11px;
+    min-height:40px;padding:0 12px;font:inherit;font-size:12px;display:inline-flex;align-items:center;gap:6px;
+    backdrop-filter:blur(8px);cursor:pointer}
+  .btn.on{border-color:var(--acc);color:var(--acc)}
+  .btn:active{transform:scale(.97)}
+  #bar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:7px;flex-wrap:nowrap;align-items:center}
+  #lights{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;max-width:100%;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #lights::-webkit-scrollbar{display:none}
+  .chip{pointer-events:auto;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:0 10px;
+    min-height:34px;font:inherit;font-size:11px;color:var(--dim);display:inline-flex;align-items:center;gap:5px;backdrop-filter:blur(8px)}
+  .chip.on{color:#ffe9c9;border-color:rgba(255,214,140,.5);background:rgba(60,44,20,.55)}
+  #go{pointer-events:auto;border:1px solid var(--line);background:var(--panel);color:var(--txt);border-radius:11px;
+    min-height:34px;padding:0 8px;font:inherit;font-size:11px;backdrop-filter:blur(8px);max-width:118px;flex:none}
+  #room{position:absolute;left:50%;top:52px;transform:translateX(-50%);font-size:12px;color:#cfe6f6;
+    background:rgba(9,17,26,.62);border:1px solid var(--line);border-radius:999px;padding:4px 12px;opacity:0;transition:.2s}
+  #room.show{opacity:1}
+  #cross{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.55);box-shadow:0 0 0 1px rgba(0,0,0,.35);display:none}
+  #cross.hot{border-color:var(--acc);box-shadow:0 0 8px rgba(94,200,255,.6)}
+  #hint{position:absolute;left:50%;transform:translateX(-50%);bottom:64px;color:#9db3c7;font-size:10.5px;
+    background:rgba(9,17,26,.6);border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+  #err{position:absolute;left:12px;right:12px;top:52px;background:rgba(60,18,18,.9);border:1px solid #a2493f;color:#ffd9d4;
+    border-radius:10px;padding:8px 10px;font-size:11.5px;white-space:pre-wrap;display:none;max-height:40vh;overflow:auto}
+  #load{position:absolute;inset:0;display:grid;place-items:center;background:#0a1017;color:var(--dim);font-size:12px;transition:.4s}
+  #load.gone{opacity:0;pointer-events:none}
 </style>
-
-<body>
-<header>
-  <h1>WRIS <em>Office 3D</em></h1>
-  <div id="stat">…</div>
-</header>
-
-<div id="stage">
-  <canvas id="cv"></canvas>
-  <div id="fallback"></div>
-  <div id="labels"></div>
-  <div id="tools">
-    <button id="btnNight" title="โหมดกลางคืน">🌙</button>
-    <button id="btnReset" title="จัดมุมใหม่">⤾</button>
-    <button id="btnLabels" class="on" title="ชื่อห้อง">🏷</button>
-    <button id="btnSim" title="จำลองผู้ส่งข้อมูล">▶</button>
-  </div>
-  <div id="hint">ลาก = หมุน · สองนิ้ว = ซูม · แตะ = เลือก/สั่งงาน</div>
-  <div id="toast"></div>
-  <div id="pop" class="hidden">
-    <div class="ph"><b id="popT">—</b><button id="popX">✕</button></div>
-    <div id="popD" class="pd"></div>
-    <div id="popA" class="pa"></div>
-  </div>
-</div>
-
-<div id="sheet">
-  <div class="sect"><h2>ตัวต่อที่ต่ออยู่</h2><span>สลับ = ถอด/ต่อโมดูล</span></div>
-  <div id="cards"></div>
-
-  <div class="sect" style="margin-top:12px"><h2>อุปกรณ์</h2><span>เพิ่มใน plan.js = ได้เลย</span></div>
-  <div id="devices" class="devs"></div>
-
-  <div class="api">
-    <div class="hd"><b>API / MCP — ส่งสัญญาณเข้า</b><span class="badge">demo</span>
-      <button id="copy">คัดลอก state</button></div>
-    <div class="row">
-      <input type="text" id="path" value="/lights/sales" autocomplete="off" spellcheck="false">
-      <input type="text" id="val" value="false" autocomplete="off" spellcheck="false">
-      <button id="send">ส่ง</button>
-    </div>
-    <div id="log"></div>
-  </div>
-</div>
-
-<footer>บอร์ดว่าง: เปลี่ยน <code>plan.js</code> = เปลี่ยนออฟฟิศ · path ในแผนที่ผูกไว้คือสัญญาที่รับเข้ามา<br>
-ดูสัญญา API/MCP ทั้งหมดใน <code>office3d/README.md</code></footer>
-
 <script src="vendor/three.min.js"></script>
-<script src="lib/core/bus.js"></script>
-<script src="lib/core/kit.js"></script>
-<script src="lib/core/motion.js"></script>
-<script src="lib/core/board.js"></script>
-<script src="lib/core/api.js"></script>
-<script src="lib/smarthome/light.js"></script>
-<script src="lib/smarthome/meeting.js"></script>
-<script src="lib/smarthome/parking.js"></script>
-<script src="lib/smarthome/device.js"></script>
-<script src="lib/smarthome/index.js"></script>
-<script src="plan.js"></script>
-<script src="demo/app.js"></script>
-</body>
+<script src="plan2.js"></script>
+<script src="lib2/util.js"></script>
+<script src="lib2/materials.js"></script>
+<script src="lib2/assemble.js"></script>
+<script>window.__mods = {};</script>
+<script src="lib2/structure.js" onerror="__mods.structure='missing'"></script>
+<script src="lib2/doors.js" onerror="__mods.doors='missing'"></script>
+<script src="lib2/furniture-work.js" onerror="__mods.work='missing'"></script>
+<script src="lib2/furniture-meeting.js" onerror="__mods.meeting='missing'"></script>
+<script src="lib2/furniture-lounge.js" onerror="__mods.lounge='missing'"></script>
+<script src="lib2/lighting.js" onerror="__mods.lighting='missing'"></script>
+<script src="lib2/walk.js" onerror="__mods.walk='missing'"></script>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <div id="top">
+    <b>WRIS <em>Office 3D</em> v2</b>
+    <div id="stats">—</div>
+    <button class="btn" id="bMode">🚶 เดิน</button>
+    <button class="btn" id="bNight">☀</button>
+  </div>
+  <div id="room"></div>
+  <div id="err"></div>
+  <div id="cross"></div>
+  <div id="bar"><div id="lights"></div></div>
+  <div id="hint">ลากซ้าย = เดิน · ลากขวา = มอง · วนซ้าย/ขวาแบบภาพรวม</div>
+  <div id="load">กำลังประกอบฉาก…</div>
+</div>
+<script>
+(function () {
+  var plan = window.OFFICE2, O = window.O3D2, THREE = window.THREE;
+  var errBox = document.getElementById('err');
+  function fail(msg) { errBox.style.display = 'block'; errBox.textContent += msg + '\n'; console.warn(msg); }
+  window.addEventListener('error', function (e) { fail('⚠ ' + (e.message || e.error)); });
+
+  var canvas = document.getElementById('cv');
+  var renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: 'high-performance' });
+  } catch (e) { fail('WebGL ใช้ไม่ได้: ' + e.message); return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d1620);
+  var camera = new THREE.PerspectiveCamera(72, 1, 0.05, 140);
+  camera.position.set(-8, 12, 26);
+
+  /* ── ประกอบฉาก ─────────────────────────────────────────── */
+  var ctx = { THREE: THREE, plan: plan, mats: O.mats, util: O.util, renderer: renderer, scene: scene };
+  var A = O.assemble(ctx);
+  var colliders = A.colliders, groups = A.groups, shellTop = A.shellTop, L = A.lighting;
+  A.problems.forEach(fail);
+  function showShell(on) { shellTop.forEach(function (o) { o.visible = on; }); }
+  showShell(false);
+  if (!L) { /* กันไว้ถ้าโมดูลแสงยังไม่มา */
+    var hemi = new THREE.HemisphereLight(0xdfeaff, 0x4a4237, 1.1); scene.add(hemi);
+    var sun = new THREE.DirectionalLight(0xfff2dc, 1.6); sun.position.set(-18, 26, -12); scene.add(sun);
+  }
+
+  /* ── กล้องภาพรวม (orbit เอง, ไม่ใช้ lib) ───────────────── */
+  var target = new THREE.Vector3(17, 1.2, 11), sph = { r: 42, th: 0.9, ph: 0.95 };
+  function applyOrbit() {
+    camera.position.set(
+      target.x + sph.r * Math.sin(sph.ph) * Math.sin(sph.th),
+      target.y + sph.r * Math.cos(sph.ph),
+      target.z + sph.r * Math.sin(sph.ph) * Math.cos(sph.th));
+    camera.lookAt(target);
+  }
+  function clampOrbit() {
+    sph.r = Math.max(4, Math.min(70, sph.r));
+    sph.ph = Math.max(0.12, Math.min(1.5, sph.ph));
+  }
+  applyOrbit();
+
+  /* ── โหมดเดิน ──────────────────────────────────────────── */
+  var walk = null, mode = 'orbit', roomEl = document.getElementById('room'), crossEl = document.getElementById('cross'),
+      hintEl = document.getElementById('hint');
+  if (O.walk) {
+    try {
+      walk = O.walk.create({ THREE: THREE, camera: camera, canvas: canvas, colliders: colliders, spawn: plan.spawn, scene: scene });
+      if (walk.onRoom) walk.onRoom(function (sp) { if (sp) { roomEl.textContent = sp.label; roomEl.classList.add('show'); } else roomEl.classList.remove('show'); });
+      if (walk.onInteract) walk.onInteract(function (obj) { if (obj && obj.userData && obj.userData.path) toast(obj.userData.path); });
+    } catch (e) { fail('โหมดเดินพัง: ' + e.message); walk = null; }
+  }
+  function toast(t) { roomEl.textContent = t; roomEl.classList.add('show'); setTimeout(function () { roomEl.classList.remove('show'); }, 1600); }
+
+  var bMode = document.getElementById('bMode'), bNight = document.getElementById('bNight');
+  function setMode(m) {
+    mode = m;
+    if (!walk) { toast('โหมดเดินยังไม่พร้อม'); return; }
+    if (m === 'walk') { showShell(true); walk.enable(); bMode.classList.add('on'); bMode.textContent = '🗺 ภาพรวม'; crossEl.style.display = 'block'; if (hintEl) hintEl.style.display = 'none'; }
+    else { walk.disable(); showShell(false); bMode.classList.remove('on'); bMode.textContent = '🚶 เดิน'; crossEl.style.display = 'none'; if (hintEl) hintEl.style.display = ''; applyOrbit(); roomEl.classList.remove('show'); }
+  }
+  bMode.onclick = function () { setMode(mode === 'walk' ? 'orbit' : 'walk'); };
+  /* เปิดมา = โหมดเดินในโถง (เข้าไปดูออฟฟิศได้เลย) */
+  if (walk) setMode('walk');
+
+  /* ── กลางวัน/กลางคืน ──────────────────────────────────── */
+  var night = false;
+  function setNight(n) {
+    night = n;
+    bNight.textContent = n ? '🌙' : '☀';
+    bNight.classList.toggle('on', n);
+    if (L && L.hooks && L.hooks.setNight) L.hooks.setNight(n);
+    else renderer.toneMappingExposure = n ? 1.25 : 1.05;
+  }
+  bNight.onclick = function () { setNight(!night); };
+
+  /* ── ชิปไฟรายห้อง (ผูก path เดิมของ API/MCP) ────────────── */
+  var lightsEl = document.getElementById('lights');
+  plan.rooms.concat([plan.corridor]).forEach(function (sp) {
+    var on = true;
+    var chip = document.createElement('button');
+    chip.className = 'chip on';
+    chip.innerHTML = '💡 ' + sp.label;
+    chip.onclick = function () {
+      on = !on; chip.classList.toggle('on', on);
+      if (L && L.hooks && L.hooks.setSpaceLight) L.hooks.setSpaceLight(sp.id, on);
+    };
+    lightsEl.appendChild(chip);
+  });
+
+  /* ── ไปห้อง (teleport ในโหมดเดิน) ──────────────────────── */
+  var allSpaces = plan.rooms.concat([plan.corridor]);
+  var go = document.createElement('select');
+  go.id = 'go';
+  go.appendChild(new Option('ไปห้อง…', ''));
+  allSpaces.forEach(function (sp) { go.appendChild(new Option(sp.label, sp.id)); });
+  document.getElementById('bar').appendChild(go);
+  go.onchange = function () {
+    var id = go.value; if (!id) return;
+    var sp = allSpaces.filter(function (s) { return s.id === id; })[0];
+    if (!sp) return;
+    var x = sp.x + sp.w / 2, z = sp.z + sp.d / 2, yaw = 0;
+    var d = sp.door;
+    if (d) {
+      if (d.side === 'z1') { z = sp.z + sp.d - 1.1; x = sp.x + d.at; yaw = 0; }
+      else if (d.side === 'z0') { z = sp.z + 1.1; x = sp.x + d.at; yaw = Math.PI; }
+      else if (d.side === 'x1') { x = sp.x + sp.w - 1.1; z = sp.z + d.at; yaw = Math.PI / 2; }
+      else { x = sp.x + 1.1; z = sp.z + d.at; yaw = -Math.PI / 2; }
+    }
+    if (mode !== 'walk') setMode('walk');
+    if (walk) walk.teleport(x, z, yaw);
+    go.value = '';
+  };
+
+  /* ── อินพุตภาพรวม: ลากหมุน · pinch/ล้อ ซูม ─────────────── */
+  var drag = null, pinch = null;
+  canvas.addEventListener('pointerdown', function (e) {
+    if (mode !== 'orbit') return;
+    drag = { x: e.clientX, y: e.clientY, th: sph.th, ph: sph.ph };
+    canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!drag || mode !== 'orbit') return;
+    sph.th = drag.th - (e.clientX - drag.x) * 0.008;
+    sph.ph = drag.ph - (e.clientY - drag.y) * 0.006;
+    clampOrbit(); applyOrbit();
+  });
+  canvas.addEventListener('pointerup', function () { drag = null; });
+  canvas.addEventListener('pointercancel', function () { drag = null; });
+  canvas.addEventListener('wheel', function (e) { sph.r += e.deltaY * 0.03; clampOrbit(); applyOrbit(); e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchmove', function (e) {
+    if (mode !== 'orbit') return;
+    if (e.touches.length === 2) {
+      var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (pinch) { sph.r -= (d - pinch) * 0.12; clampOrbit(); applyOrbit(); }
+      pinch = d;
+    }
+  }, { passive: true });
+  canvas.addEventListener('touchend', function () { pinch = null; });
+
+  /* ── รีไซส์ ───────────────────────────────────────────── */
+  function resize() {
+    var w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (mode === 'orbit') applyOrbit();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ── ลูปเรนเดอร์ ──────────────────────────────────────── */
+  var statsEl = document.getElementById('stats'), last = performance.now(), fpsAcc = 0, fpsN = 0, fps = 0;
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    fpsAcc += dt; fpsN++;
+    if (fpsAcc > 0.5) { fps = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
+    if (walk && mode === 'walk' && walk.update) { try { walk.update(dt); } catch (e) { fail('walk.update: ' + e.message); } }
+    if (L && L.hooks && L.hooks.update) { try { L.hooks.update(dt); } catch (e) { } }
+    renderer.render(scene, camera);
+    var inf = renderer.info.render;
+    statsEl.textContent = (fps > 0 ? fps + ' fps · ' : '') + (inf.triangles / 1000).toFixed(0) + 'k tri · ' + inf.calls + ' call';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  setTimeout(function () { document.getElementById('load').classList.add('gone'); }, 350);
+  window.__office2 = { scene: scene, camera: camera, renderer: renderer, colliders: colliders, setMode: setMode, setNight: setNight, groups: groups, L: L, walk: walk };
+})();
+</script>
 </html>
