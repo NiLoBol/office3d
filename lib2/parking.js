@@ -433,6 +433,38 @@
       return carGeos[key];
     }
 
+    /* ── เงาแต้ม (contact shadow) ของรถ ────────────────────────────────
+       lighting.js เบก shadow map ครั้งเดียว (sun.shadow.autoUpdate=false) → เงารถจริงจะค้างที่จุดเกิด
+       จึงห้ามรถ cast shadow แล้วใช้แผ่นเงาวงรีเบลอที่แปะเป็นลูกของรถ (เลื่อน/หมุนตามรถ) */
+    var shadowMat = null;
+    var shadowGeos = {};
+    (function () {
+      if (typeof document === 'undefined' || !document.createElement) return;
+      var S = 128, cv = document.createElement('canvas');
+      cv.width = S; cv.height = S;
+      var g2 = cv.getContext('2d');
+      var grd = g2.createRadialGradient(S / 2, S / 2, S * 0.04, S / 2, S / 2, S * 0.5);
+      grd.addColorStop(0, 'rgba(0,0,0,0.92)');
+      grd.addColorStop(0.45, 'rgba(0,0,0,0.42)');
+      grd.addColorStop(0.78, 'rgba(0,0,0,0.10)');
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      g2.fillStyle = grd;
+      g2.fillRect(0, 0, S, S);
+      var tex = new THREE.CanvasTexture(cv);
+      if (THREE.SRGBColorSpace !== undefined && 'colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+      tex.needsUpdate = true;
+      shadowMat = new THREE.MeshBasicMaterial({
+        map: tex, color: 0x000000, transparent: true, opacity: 0.38,
+        depthWrite: false, fog: false
+      });
+      shadowMat.name = 'parking.carShadow';
+    })();
+    function shadowGeo(w, d) {
+      var k = 'sh' + w + '_' + d;
+      if (!shadowGeos[k]) shadowGeos[k] = new THREE.PlaneGeometry(w, d);
+      return shadowGeos[k];
+    }
+
     /* ══════════════════ 4) คลังรถ ══════════════════ */
     var cars = [], bySlot = {};
     var CAR_COLORS = {
@@ -443,10 +475,25 @@
     };
 
     function addCar(id, spec, slot) {
+      var sty = STYLES[spec[0]] || STYLES.sedan;
       var g = carGeo(spec[0], spec[1]);
       var m = new THREE.Mesh(g, matCar);
       m.name = 'car:' + id;
-      m.castShadow = true;
+      /* ห้ามทอดเงาลง shadow map (ฉากเบกเงาครั้งเดียว → เงาจะค้างเมื่อรถแล่นออก) */
+      m.castShadow = false;
+      m.receiveShadow = false;
+      m.userData.noShadow = true;
+      /* เงาแต้มที่ขยับตามรถ (ลูกของ mesh รถ → ได้ตำแหน่ง/การหมุนตามไปด้วย) */
+      if (shadowMat) {
+        var sp = new THREE.Mesh(shadowGeo(sty.W + 0.34, sty.L + 0.26), shadowMat);
+        sp.name = 'car-shadow:' + id;
+        sp.rotation.x = -Math.PI / 2;
+        sp.position.y = 0.006;
+        sp.castShadow = false;
+        sp.receiveShadow = false;
+        sp.userData.noShadow = true;
+        m.add(sp);
+      }
       root.add(m);
       var car = {
         id: id, mesh: m, slot: slot, state: 'gone', pending: false,
