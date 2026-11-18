@@ -334,7 +334,7 @@
     }
     function interact(nx, ny) {
       var o = pickAt(nx === undefined ? 0 : nx, ny === undefined ? 0 : ny);
-      if (o) for (var i = 0; i < interCbs.length; i++) try { interCbs[i](o); } catch (e) { }
+      for (var i = 0; i < interCbs.length; i++) try { interCbs[i](o); } catch (e) { }
       return o;
     }
 

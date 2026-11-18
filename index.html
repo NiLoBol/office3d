@@ -38,6 +38,16 @@
   .mchip.busy i{background:#ff5a4a}
   .mchip.soon i{background:#ffc657}
   .mchip b{font-weight:650;color:#eaf4fb}
+  #act{position:absolute;left:10px;right:10px;bottom:96px;background:rgba(13,24,34,.96);border:1px solid var(--line);
+    border-radius:14px;padding:10px 12px;backdrop-filter:blur(10px);box-shadow:0 8px 22px rgba(0,0,0,.5);display:none;pointer-events:auto}
+  #act.show{display:block}
+  .ah{display:flex;align-items:center;gap:8px}
+  .ah b{font-size:13px;font-weight:700;color:#eaf4fb}
+  .ah button{margin-left:auto;min-width:36px;min-height:36px;background:transparent;border:0;color:var(--dim);font-size:15px;cursor:pointer}
+  #actBody{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  #actBody button{border:1px solid var(--line);background:#1b2c3d;color:#dceaf5;border-radius:10px;
+    min-height:40px;padding:0 12px;font:inherit;font-size:12px;cursor:pointer}
+  #actBody button:disabled{opacity:.55}
   #room{position:absolute;left:50%;top:52px;transform:translateX(-50%);font-size:12px;color:#cfe6f6;
     background:rgba(9,17,26,.62);border:1px solid var(--line);border-radius:999px;padding:4px 12px;opacity:0;transition:.2s}
   #room.show{opacity:1}
@@ -80,6 +90,7 @@
   <div id="err"></div>
   <div id="cross"></div>
   <div id="mrow"></div>
+  <div id="act"><div class="ah"><b id="actT">ตัวเลือก</b><button id="actX">✕</button></div><div id="actBody"></div></div>
   <div id="bar"><div id="lights"></div></div>
   <div id="hint">ลาก 1 นิ้ว = หมุน · 2 นิ้ว = เลื่อน/ซูม (ตามนิ้ว) · เมาส์: ซ้าย = หมุน, ขวา = เลื่อน</div>
   <div id="load">กำลังประกอบฉาก…</div>
@@ -157,7 +168,7 @@
         }
         roomEl.textContent = txt; roomEl.classList.add('show');
       });
-      if (walk.onInteract) walk.onInteract(function (obj) { if (obj && obj.userData && obj.userData.path) toast(obj.userData.path); });
+      if (walk.onInteract) walk.onInteract(function (obj) { actionsFor(obj); });
     } catch (e) { fail('โหมดเดินพัง: ' + e.message); walk = null; }
   }
   function toast(t) { roomEl.textContent = t; roomEl.classList.add('show'); setTimeout(function () { roomEl.classList.remove('show'); }, 1600); }
@@ -249,6 +260,93 @@
     if (SIG) SIG.subscribe(function (p) { if (p.indexOf('/meeting/' + sp.id + '/') === 0) paintM(sp); });
     paintM(sp);
   });
+
+  /* ── แผงตัวเลือกเมื่อ "แตะวัตถุ" (ระบบ action แบบ v1) ──────────── */
+  var actEl = document.getElementById('act'), actT = document.getElementById('actT'), actBody = document.getElementById('actBody');
+  function closeAct() { if (actEl) actEl.classList.remove('show'); }
+  var actX = document.getElementById('actX'); if (actX) actX.onclick = closeAct;
+  function openAct(title, items) {
+    if (!actEl) return;
+    actT.textContent = title || 'ตัวเลือก';
+    actBody.innerHTML = '';
+    (items || []).forEach(function (it) {
+      var b = document.createElement('button');
+      b.textContent = it.label;
+      b.onclick = function () { try { it.fn(); } catch (e) { toast('พลาด: ' + (e && e.message)); } closeAct(); };
+      actBody.appendChild(b);
+    });
+    actEl.classList.add('show');
+  }
+  function allSpaces2() { return plan.rooms.concat([plan.corridor]); }
+  function roomById(id) { return allSpaces2().filter(function (s) { return s.id === id; })[0] || null; }
+  function roomAtPoint(x, z) {
+    var a = allSpaces2();
+    for (var i = 0; i < a.length; i++) if (x >= a[i].x && x <= a[i].x + a[i].w && z >= a[i].z && z <= a[i].z + a[i].d) return a[i];
+    return null;
+  }
+  function showParking() {
+    if (mode !== 'orbit') setMode('orbit');
+    var p = plan.parking || { x: 36, z: 2, w: 18, d: 20 };
+    target.set(p.x + p.w / 2, 0.6, p.z + p.d / 2);
+    sph.r = 30; sph.ph = 0.62; sph.th = 0.55; clampOrbit(); applyOrbit();
+    toast('ลานจอด · รถเข้า/ออกเองทุก ~9 วิ');
+  }
+  function actionsFor(obj) {
+    var path = obj && obj.userData && obj.userData.path ? String(obj.userData.path) : null;
+    var items = [], title = path || 'ตัวเลือก';
+    if (path && path.indexOf('/lights/') === 0) {
+      var lid = path.split('/')[2], lsp = roomById(lid), lon = !SIG || SIG.get(path) !== false;
+      title = 'ไฟ · ' + (lsp ? lsp.label : lid);
+      items.push({ label: lon ? '💡 ปิดไฟ' : '💡 เปิดไฟ', fn: function () { if (SIG) SIG.push(path, !lon); } });
+      if (lsp) items.push({ label: '🚪 ไปห้องนี้', fn: function () { gotoRoom(lsp); } });
+    }
+    if (path && path.indexOf('/meeting/') === 0) {
+      var mid = path.split('/')[2], msp = roomById(mid);
+      var busy = SIG && SIG.get('/meeting/' + mid + '/state') === 'busy';
+      if (msp) {
+        title = msp.label + (busy ? ' · ไม่ว่าง' : ' · ว่าง');
+        items.push({ label: '🚪 ไปห้องนี้', fn: function () { gotoRoom(msp); } });
+      }
+      items.push({ label: busy ? '✅ ปล่อยห้อง (เดโม)' : '📌 จองห้อง (เดโม)', fn: function () {
+        if (!SIG) return;
+        SIG.push('/meeting/' + mid + '/state', busy ? 'free' : 'busy');
+        SIG.push('/meeting/' + mid + '/who', busy ? '' : 'จองหน้างาน');
+        SIG.push('/meeting/' + mid + '/until', busy ? '' : '19:45');
+        SIG.push('/meeting/' + mid + '/count', busy ? 0 : 4);
+      } });
+    }
+    if (path && path.indexOf('/parking/') === 0) {
+      var m = path.match(/\/parking\/slot\/(\d+)\/occupied/);
+      if (m) {
+        var slot = m[1], occ = !SIG || SIG.get(path) !== false;
+        title = 'ช่องจอด ' + slot;
+        items.push({ label: occ ? '🚗 ให้รถออก' : '🚗 ให้รถเข้า', fn: function () {
+          if (!SIG) return;
+          SIG.push(path, !occ);
+          if (!occ) { SIG.push('/parking/gate', true); setTimeout(function () { SIG.push('/parking/gate', false); }, 2600); }
+        } });
+      }
+    }
+    if (!items.length) {
+      var near = roomAtPoint(camera.position.x, camera.position.z);
+      if (near) {
+        title = near.label;
+        var on = !SIG || SIG.get('/lights/' + near.id) !== false;
+        items.push({ label: on ? '💡 ปิดไฟห้องนี้' : '💡 เปิดไฟห้องนี้', fn: function () { if (SIG) SIG.push('/lights/' + near.id, !on); } });
+        items.push({ label: '🚪 ไปที่ห้องนี้', fn: function () { gotoRoom(near); } });
+        if (near.furn === 'meeting') items.push({ label: '📋 ดูการจอง', fn: function () { actionsFor({ userData: { path: '/meeting/' + near.id + '/state' } }); } });
+      } else {
+        items.push({ label: '🅿 ไปลานจอดรถ', fn: showParking });
+      }
+    }
+    openAct(title, items);
+  }
+
+  /* ปุ่ม 🅿 ดูลานจอด (โหมดภาพรวม) */
+  var bPark = document.createElement('button');
+  bPark.className = 'btn'; bPark.textContent = '🅿'; bPark.title = 'ดูลานจอดรถ';
+  bPark.onclick = function () { showParking(); };
+  document.getElementById('bar').appendChild(bPark);
 
   /* ── อินพุตภาพรวม: 1 นิ้วลาก = หมุน (ตามนิ้ว) · 2 นิ้วลาก = เลื่อน (ตามนิ้ว) + จีบ/กาง = ซูม ── */
   var pts = {}, gm = null;
@@ -345,7 +443,8 @@
 
   setTimeout(function () { document.getElementById('load').classList.add('gone'); }, 350);
   window.__office2 = { scene: scene, camera: camera, renderer: renderer, colliders: colliders, setMode: setMode, setNight: setNight,
-    groups: groups, L: L, walk: walk, orbit: { target: target, sph: sph, apply: applyOrbit } };
+    groups: groups, L: L, walk: walk, signals: A.signals, orbit: { target: target, sph: sph, apply: applyOrbit },
+    actionsFor: actionsFor, showParking: showParking };
 })();
 </script>
 </html>

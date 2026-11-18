@@ -101,6 +101,8 @@
       ['reception', 'sales', 'meeting1', 'pantry', 'meeting2', 'server', 'ops', 'training', 'corridor'].forEach(function (id, n) {
         set('/lights/' + id, n !== 5, 'demo');       /* server ปิดไฟ (ไม่มีคน) */
       });
+      for (var s = 1; s <= 10; s++) set('/parking/slot/' + s + '/occupied', s <= 6, 'demo');
+      set('/parking/gate', false, 'demo');
       set('/door/main', false, 'demo');
       set('/lock/server', true, 'demo');
     }
@@ -124,6 +126,14 @@
         var rid = ['reception', 'sales', 'pantry', 'ops', 'meeting1', 'meeting2'][Math.floor(Math.random() * 6)];
         set('/lights/' + rid, !get('/lights/' + rid), 'demo');
       }
+      /* รถเข้า/ออก: สลับช่องจอดทุก tick + ยกไม้กั้นชั่วคราวเมื่อมีรถเข้า */
+      var slot = 1 + Math.floor(Math.random() * 10);
+      var occ = !!get('/parking/slot/' + slot + '/occupied');
+      if (!occ) {
+        set('/parking/gate', true, 'demo');
+        setTimeout(function () { set('/parking/gate', false, 'demo'); }, 2600);
+      }
+      set('/parking/slot/' + slot + '/occupied', !occ, 'demo');
     }
     function sim(on) {
       if (on === false) { if (timer) clearInterval(timer); timer = null; return false; }
