@@ -253,6 +253,7 @@
   /* ── อินพุตภาพรวม: 1 นิ้วลาก = หมุน (ตามนิ้ว) · 2 นิ้วลาก = เลื่อน (ตามนิ้ว) + จีบ/กาง = ซูม ── */
   var pts = {}, gm = null;
   function axesNow() {
+    camera.updateMatrixWorld(true);                              /* ให้ matrix เป็นค่าปัจจุบัน (กันแกนผิดตอนเพิ่งสลับโหมด) */
     var e = camera.matrixWorld.elements;
     return { right: new THREE.Vector3(e[0], e[1], e[2]).normalize(), up: new THREE.Vector3(e[4], e[5], e[6]).normalize() };
   }
