@@ -12,7 +12,7 @@ window.OFFICE2 = {
   spawn: { x: 2.0, z: 11.0, yaw: -Math.PI / 2 },
   /* ชั้นสัญญาณ: ใส่ base/token ของระบบบริษัท (GET /api/state + SSE /api/state/stream)
      เว้น base = โหมดเดโมจำลองการจอง/ไฟในเครื่อง · override ได้ทาง ?api=URL&token=... */
-  api: { base: '', token: '', demo: true },
+  api: { base: 'https://controller-office3d.131199999.xyz', token: '', demo: true },
   corridor: { id: 'corridor', label: 'โถงทางเดิน', x: 0, z: 9.5, w: 34, d: 3,
     floor: 'floor.tile.polished', furn: 'corridor' },
 
