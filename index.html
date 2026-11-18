@@ -81,7 +81,7 @@
   <div id="cross"></div>
   <div id="mrow"></div>
   <div id="bar"><div id="lights"></div></div>
-  <div id="hint">ลากซ้าย = เดิน · ลากขวา = มอง · วนซ้าย/ขวาแบบภาพรวม</div>
+  <div id="hint">ลาก 1 นิ้ว = หมุน · 2 นิ้ว = เลื่อน/ซูม (ตามนิ้ว) · เมาส์: ซ้าย = หมุน, ขวา = เลื่อน</div>
   <div id="load">กำลังประกอบฉาก…</div>
 </div>
 <script>
@@ -250,31 +250,68 @@
     paintM(sp);
   });
 
-  /* ── อินพุตภาพรวม: ลากหมุน · pinch/ล้อ ซูม ─────────────── */
-  var drag = null, pinch = null;
+  /* ── อินพุตภาพรวม: 1 นิ้วลาก = หมุน (ตามนิ้ว) · 2 นิ้วลาก = เลื่อน (ตามนิ้ว) + จีบ/กาง = ซูม ── */
+  var pts = {}, gm = null;
+  function axesNow() {
+    var e = camera.matrixWorld.elements;
+    return { right: new THREE.Vector3(e[0], e[1], e[2]).normalize(), up: new THREE.Vector3(e[4], e[5], e[6]).normalize() };
+  }
+  function worldPerPx() {
+    var vh = canvas.clientHeight || window.innerHeight || 700;
+    return (2 * Math.tan(camera.fov * Math.PI / 360) * sph.r) / vh;
+  }
+  function ids() { var a = []; for (var k in pts) a.push(k); return a; }
   canvas.addEventListener('pointerdown', function (e) {
     if (mode !== 'orbit') return;
-    drag = { x: e.clientX, y: e.clientY, th: sph.th, ph: sph.ph };
-    canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
-  });
-  canvas.addEventListener('pointermove', function (e) {
-    if (!drag || mode !== 'orbit') return;
-    sph.th = drag.th - (e.clientX - drag.x) * 0.008;
-    sph.ph = drag.ph - (e.clientY - drag.y) * 0.006;
-    clampOrbit(); applyOrbit();
-  });
-  canvas.addEventListener('pointerup', function () { drag = null; });
-  canvas.addEventListener('pointercancel', function () { drag = null; });
-  canvas.addEventListener('wheel', function (e) { sph.r += e.deltaY * 0.03; clampOrbit(); applyOrbit(); e.preventDefault(); }, { passive: false });
-  canvas.addEventListener('touchmove', function (e) {
-    if (mode !== 'orbit') return;
-    if (e.touches.length === 2) {
-      var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      if (pinch) { sph.r -= (d - pinch) * 0.12; clampOrbit(); applyOrbit(); }
-      pinch = d;
+    var mouse = (e.pointerType === 'mouse');
+    if (mouse && e.button !== 0 && e.button !== 2) return;      /* กลาง/อื่น ไม่ต้อง */
+    pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
+    var a = ids();
+    if (mouse && e.button === 2) {                               /* คลิกขวา = เลื่อน (pan) ตามเมาส์ */
+      gm = { t: 'pan', id0: e.pointerId, id1: e.pointerId, mx: e.clientX, my: e.clientY,
+             d0: 0, r0: sph.r, target: target.clone(), ax: axesNow() };
+      return;
     }
-  }, { passive: true });
-  canvas.addEventListener('touchend', function () { pinch = null; });
+    if (a.length === 1) {
+      gm = { t: 'rot', id: e.pointerId, x: e.clientX, y: e.clientY, th: sph.th, ph: sph.ph };
+    } else if (a.length >= 2) {
+      var p = pts[a[0]], q = pts[a[1]];
+      gm = { t: 'pan', id0: a[0], id1: a[1], mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2,
+             d0: Math.hypot(p.x - q.x, p.y - q.y), r0: sph.r, target: target.clone(), ax: axesNow() };
+    }
+  });
+  canvas.addEventListener('contextmenu', function (e) { if (mode === 'orbit') e.preventDefault(); });
+  canvas.addEventListener('pointermove', function (e) {
+    if (mode !== 'orbit' || !pts[e.pointerId] || !gm) return;
+    pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (gm.t === 'rot' && e.pointerId === gm.id) {
+      sph.th = gm.th - (e.clientX - gm.x) * 0.006;   /* ลากขวา → ฉากหมุนตามนิ้ว */
+      sph.ph = gm.ph + (e.clientY - gm.y) * 0.006;
+      clampOrbit(); applyOrbit(); return;
+    }
+    if (gm.t === 'pan') {
+      var p = pts[gm.id0], q = pts[gm.id1];
+      if (!p || !q) return;
+      var mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, d = Math.hypot(p.x - q.x, p.y - q.y);
+      var w = worldPerPx();
+      target.copy(gm.target)
+        .addScaledVector(gm.ax.right, -(mx - gm.mx) * w)   /* นิ้วไปขวา → กล้องไปซ้าย = ฉากเลื่อนตามนิ้ว */
+        .addScaledVector(gm.ax.up, (my - gm.my) * w);      /* นิ้วลง → ฉากเลื่อนลง */
+      if (gm.d0 > 12 && d > 12) sph.r = Math.max(4, Math.min(70, gm.r0 * (gm.d0 / d)));
+      clampOrbit(); applyOrbit();
+    }
+  });
+  function pointersUp(e) {
+    delete pts[e.pointerId];
+    try { canvas.releasePointerCapture(e.pointerId); } catch (err) { }
+    var a = ids();
+    if (!a.length) { gm = null; return; }
+    if (a.length === 1) { var p = pts[a[0]]; gm = { t: 'rot', id: a[0], x: p.x, y: p.y, th: sph.th, ph: sph.ph }; }
+  }
+  canvas.addEventListener('pointerup', pointersUp);
+  canvas.addEventListener('pointercancel', pointersUp);
+  canvas.addEventListener('wheel', function (e) { sph.r += e.deltaY * 0.03; clampOrbit(); applyOrbit(); e.preventDefault(); }, { passive: false });
 
   /* ── รีไซส์ ───────────────────────────────────────────── */
   function resize() {
@@ -306,7 +343,8 @@
   requestAnimationFrame(frame);
 
   setTimeout(function () { document.getElementById('load').classList.add('gone'); }, 350);
-  window.__office2 = { scene: scene, camera: camera, renderer: renderer, colliders: colliders, setMode: setMode, setNight: setNight, groups: groups, L: L, walk: walk };
+  window.__office2 = { scene: scene, camera: camera, renderer: renderer, colliders: colliders, setMode: setMode, setNight: setNight,
+    groups: groups, L: L, walk: walk, orbit: { target: target, sph: sph, apply: applyOrbit } };
 })();
 </script>
 </html>
