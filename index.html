@@ -64,6 +64,8 @@
 <script src="lib2/furniture-work.js" onerror="__mods.work='missing'"></script>
 <script src="lib2/furniture-meeting.js" onerror="__mods.meeting='missing'"></script>
 <script src="lib2/furniture-lounge.js" onerror="__mods.lounge='missing'"></script>
+<script src="lib2/parking.js" onerror="__mods.parking='missing'"></script>
+<script src="lib2/people.js" onerror="__mods.people='missing'"></script>
 <script src="lib2/lighting.js" onerror="__mods.lighting='missing'"></script>
 <script src="lib2/walk.js" onerror="__mods.walk='missing'"></script>
 <canvas id="cv"></canvas>
@@ -292,6 +294,10 @@
     if (fpsAcc > 0.5) { fps = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
     if (walk && mode === 'walk' && walk.update) { try { walk.update(dt); } catch (e) { fail('walk.update: ' + e.message); } }
     if (L && L.hooks && L.hooks.update) { try { L.hooks.update(dt); } catch (e) { } }
+    if (A.built) for (var bi = 0; bi < A.built.length; bi++) {
+      var bm = A.built[bi];
+      if (bm && bm.hooks && bm.hooks.update) { try { bm.hooks.update(dt); } catch (e) { } }
+    }
     renderer.render(scene, camera);
     var inf = renderer.info.render;
     statsEl.textContent = (fps > 0 ? fps + ' fps · ' : '') + (inf.triangles / 1000).toFixed(0) + 'k tri · ' + inf.calls + ' call';

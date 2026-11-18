@@ -60,6 +60,21 @@ window.OFFICE2 = {
 
   ceiling: { tile: 1.2, mat: 'wall.paint.ceiling', drop: 0.06, luminaire: { size: 0.6, mat: 'led.warm' } },
 
+  /* ลานจอดรถ + ถนน ด้านตะวันออกของอาคาร (สำหรับโมดูล parking) */
+  parking: {
+    x: 36, z: 2, w: 18, d: 20, cols: 5, rows: 2, slotW: 3.0, slotD: 5.2, gap: 0.5,
+    gate: { x: 55.0, z: 12.0 }, street: { x: 56.5, z: 0, w: 9, d: 22 },
+    bind: { gate: '/parking/gate', free: '/parking/free', slot: '/parking/slot/{n}/occupied' }
+  },
+
+  /* จุดเดินของคน (โหมด people) — เส้นทางในโถง + ทางเข้าอาคาร */
+  people: {
+    spawn: { x: 1.2, z: 11.0 },
+    max: 14,
+    walkSpeed: 1.15,
+    bind: { meeting: '/meeting/{id}/count' }
+  },
+
   devices: [
     { id: 'door-main', type: 'door', label: 'ประตูหน้า', path: '/door/main', x: 1.2, z: 11.0 },
     { id: 'ac-sales', type: 'climate', label: 'แอร์ฝ่ายขาย', path: '/climate/sales', x: 9.0, z: 1.2 },

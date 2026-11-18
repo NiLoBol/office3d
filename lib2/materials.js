@@ -96,21 +96,22 @@
     carpet: function () {
       var S = 128, f1 = field(S, 8, 21, 2), f2 = field(S, 18, 22, 1), r = rng(23);
       return paint(S, function (x, y, o, i) {
-        var v = 233 + f1[i] * 20 + f2[i] * 16;
+        /* contrast ลดลง (v1: 20/16) — เดิมลายจุดเห็นชัดเป็น speckle ตอนปูซ้ำ 1 ม. */
+        var v = 234 + f1[i] * 13 + f2[i] * 10;
         o[0] = v * 1.01; o[1] = v; o[2] = v * 0.99;
       });
     },
     /* กระเบื้องปูพื้น: 2×2 แผ่น + รอยต่อ + bevel + tone ต่างกันเล็กน้อย (พื้นที่จริง 1.2 ม./รอบ) */
     tile: function () {
       var S = 256, T = S / 2, f = field(S, 7, 31, 2), r = rng(32), tone = [], i;
-      for (i = 0; i < 4; i++) tone.push((r() - 0.5) * 18);
+      for (i = 0; i < 4; i++) tone.push((r() - 0.5) * 12);
       return paint(S, function (x, y, o, idx) {
         var ti = (y < T ? 0 : 2) + (x < T ? 0 : 1);
         var lx = x % T, ly = y % T;
         var e = Math.min(Math.min(lx, T - 1 - lx), Math.min(ly, T - 1 - ly));
-        var v = 212 + tone[ti] + f[idx] * 16;
-        if (e < 3) v = 120 + f[idx] * 10;           // รอยต่อยาแนว (เข้ม)
-        else if (e < 7) v -= 16;                    // เงา bevel ขอบแผ่น
+        var v = 212 + tone[ti] + f[idx] * 11;
+        if (e < 3) v = 150 + f[idx] * 9;            // รอยต่อยาแนว (เข้ม) — เดิม 120 ทำแถบเงาดำตอน r ต่ำ
+        else if (e < 7) v -= 10;                    // เงา bevel ขอบแผ่น
         else v += 4 * (1 - e / T);                  // ผิวสว่างกลางแผ่น
         o[0] = v; o[1] = v * 0.996; o[2] = v * 0.978;
       });
@@ -124,9 +125,9 @@
         var pi = Math.min(N - 1, Math.floor(y / ph)), ly = y - pi * ph;
         var w = sf(fs, S, x / S, y / S * 3) * 0.7;
         var g = sf(fg, S, x / S * 2, y / S * 7 + w);
-        var k = 0.92 + g * 0.40 + fg[idx] * 0.12;
-        if (ly < 2.2 || ly > ph - 2.2) k = 0.34;    // รอยต่อแผ่นไม้
-        else if (ly < 5.5) k *= 0.82;               // ขอบแผ่นนูน
+        var k = 0.94 + g * 0.24 + fg[idx] * 0.10;   // v1: 0.40 — ลายเข้มเกินจนเห็นเป็นทาง
+        if (ly < 2.2 || ly > ph - 2.2) k = 0.52;    // รอยต่อแผ่นไม้ (v1: 0.34)
+        else if (ly < 5.5) k *= 0.88;               // ขอบแผ่นนูน
         k *= tn[pi];
         o[0] = 189 * k; o[1] = 143 * k; o[2] = 97 * k;
       });
@@ -134,11 +135,12 @@
     /* ลายไม้เนื้อ (เฟอร์นิเจอร์) — สีอบในเนื้อ texture */
     grain: function (tint, seed, contrast) {
       return function () {
-        var S = 128, fg = field(S, 3, seed, 2), fs = field(S, 10, seed + 7, 1);
+        /* v1: S 128 / y*6 · v2: 192 px + แนวยาวน้อยลง → ลายซ้ำบนหน้าโต๊ะ/บานตู้เนียนขึ้น */
+        var S = 192, fg = field(S, 3, seed, 2), fs = field(S, 10, seed + 7, 1);
         var k0 = contrast || 0.34;
         return paint(S, function (x, y, o, idx) {
           var w = sf(fs, S, x / S, y / S * 3) * 0.65;
-          var g = sf(fg, S, x / S * 2, y / S * 6 + w);
+          var g = sf(fg, S, x / S * 2, y / S * 4 + w);
           var k = 0.97 + g * k0;
           o[0] = tint[0] * k; o[1] = tint[1] * k; o[2] = tint[2] * k * 0.985;
         });
@@ -167,9 +169,11 @@
     weave: function () {
       var S = 128, f = field(S, 12, 71, 1);
       return paint(S, function (x, y, o, i) {
-        var v = 230 + f[i] * 22
-          + 14 * Math.sin(x * 2 * Math.PI / 3)
-          + 14 * Math.sin(y * 2 * Math.PI / 3);
+        /* v1: sine 14 @ 3px + noise 22 (rx/ry 3) → moiré ชัดบนเบาะเก้าอี้ตัวเล็ก
+           v2: คาบ 6px + amplitude 6, noise 12, rx/ry 2 → เนื้อผ้าเนียน ไม่เป็นตะแกรง */
+        var v = 232 + f[i] * 12
+          + 6 * Math.sin(x * 2 * Math.PI / 6)
+          + 6 * Math.sin(y * 2 * Math.PI / 6);
         o[0] = v; o[1] = v; o[2] = v;
       });
     },
@@ -274,10 +278,11 @@
       });
     }
   };
-  PAT.grainOak = PAT.grain([214, 172, 124], 51, 0.15);
-  PAT.grainWalnut = PAT.grain([122, 86, 62], 52, 0.20);
-  PAT.grainWhite = PAT.grain([240, 236, 228], 53, 0.16);
-  PAT.grainLaminate = PAT.grain([226, 212, 188], 54, 0.17);
+  /* contrast (ตัวเลขท้าย) ลดจาก v1 ~25% + canvas 192px — กันลายไม้ซ้ำเห็นเป็นทางบนหน้าโต๊ะ */
+  PAT.grainOak = PAT.grain([214, 172, 124], 51, 0.13);        // v1 .15
+  PAT.grainWalnut = PAT.grain([122, 86, 62], 52, 0.17);       // v1 .20
+  PAT.grainWhite = PAT.grain([240, 236, 228], 53, 0.13);      // v1 .16
+  PAT.grainLaminate = PAT.grain([234, 213, 178], 54, 0.14);   // v1 [226,212,188] · .17 · อุ่นขึ้น
 
   /* =========================================================== 2) SPEC (ชื่อตายตัวตาม CONTRACT)
      c สี · r roughness · m metalness · t opacity · e/ei emissive
@@ -286,16 +291,16 @@
     /* ---- พื้น ---- */
     'floor.carpet.grey':  { c: 0xa2a8ad, r: 0.97, m: 0, pat: 'carpet', tile: 1.0, rx: 1, ry: 1, bump: 0.10 },
     'floor.carpet.blue':  { c: 0x6d7c91, r: 0.97, m: 0, pat: 'carpet', tile: 1.0, rx: 1, ry: 1, bump: 0.10 },
-    'floor.tile.polished':{ c: 0xf7f6f2, r: 0.45, m: 0.03, pat: 'tile', tile: 1.2, rx: 1, ry: 1, bump: 0.10 },
+    'floor.tile.polished':{ c: 0xf7f6f2, r: 0.50, m: 0.02, pat: 'tile', tile: 1.2, rx: 1, ry: 1, bump: 0.09 },
     'floor.tile.dark':    { c: 0x7d8286, r: 0.50, m: 0.04, pat: 'tile', tile: 1.2, rx: 1, ry: 1, bump: 0.10 },
     'floor.wood.oak':     { c: 0xffffff, r: 0.50, m: 0, pat: 'planks', tile: 1.2, rx: 1, ry: 1, bump: 0.08, roughMap: 1 },
     'floor.concrete':     { c: 0xababa6, r: 0.93, m: 0, pat: 'concrete', tile: 2.0, rx: 1, ry: 1, bump: 0.12 },
     'floor.rubber':       { c: 0x505456, r: 0.90, m: 0, pat: 'rubber', tile: 0.6, rx: 1, ry: 1, bump: 0.14 },
 
     /* ---- ผนัง ---- */
-    'wall.paint':         { c: 0xeff2f4, r: 0.88, m: 0, pat: 'paint', rx: 3, ry: 3 },
+    'wall.paint':         { c: 0xf4f6f8, r: 0.88, m: 0, pat: 'paint', rx: 3, ry: 3 },
     'wall.paint.warm':    { c: 0xf1ece3, r: 0.88, m: 0, pat: 'paint', rx: 3, ry: 3 },
-    'wall.paint.ceiling': { c: 0xf8f9fa, r: 1.0, m: 0, pat: 'paint', rx: 1, ry: 1 },
+    'wall.paint.ceiling': { c: 0xfcfcfc, r: 1.0, m: 0, pat: 'paint', rx: 1, ry: 1 },
     'wall.acoustic':      { c: 0xb9bec4, r: 0.92, m: 0, pat: 'acoustic', rx: 1, ry: 1, bump: 0.18 },
     'wall.baseboard':     { c: 0xf7f8f9, r: 0.45, m: 0, pat: 'paint', rx: 1, ry: 1 },
     'wall.trim':          { c: 0xe1e5e8, r: 0.60, m: 0, pat: 'paint', rx: 1, ry: 1 },
@@ -307,27 +312,27 @@
     'glass.dark':         { c: 0x2b3540, r: 0.15, m: 0.2, t: 0.75 },
 
     /* ---- โลหะ (brushed = aniso จำลอง: noise แนวเดียว + roughnessMap) ---- */
-    'metal.steel':        { c: 0xc2c9d0, r: 0.34, m: 0.90, pat: 'brushed', rx: 2, ry: 1, bump: 0.04, roughMap: 1 },
-    'metal.chrome':       { c: 0xdfe4e9, r: 0.10, m: 1.00, pat: 'brushed', rx: 2, ry: 1, bump: 0.02 },
-    'metal.dark':         { c: 0x40464e, r: 0.40, m: 0.78, pat: 'brushed', rx: 2, ry: 1, bump: 0.04, roughMap: 1 },
+    'metal.steel':        { c: 0xc2c9d0, r: 0.42, m: 0.90, pat: 'brushed', rx: 2, ry: 1, bump: 0.04, roughMap: 1 },
+    'metal.chrome':       { c: 0xdfe4e9, r: 0.22, m: 0.95, pat: 'brushed', rx: 2, ry: 1, bump: 0.02 },
+    'metal.dark':         { c: 0x40464e, r: 0.55, m: 0.32, pat: 'brushed', rx: 2, ry: 1, bump: 0.04, roughMap: 1 },
     'metal.aluminium':    { c: 0xb0b7be, r: 0.38, m: 0.85, pat: 'brushed', rx: 2, ry: 1, bump: 0.04, roughMap: 1 },
 
     /* ---- ไม้ (สีอบในเนื้อ texture) ---- */
     'wood.oak':           { c: 0xffffff, r: 0.62, m: 0, pat: 'grainOak', rx: 1, ry: 1, bump: 0.015, tile: 0.9, tileY: 0.9 },
     'wood.walnut':        { c: 0xffffff, r: 0.60, m: 0, pat: 'grainWalnut', rx: 1, ry: 1, bump: 0.015, tile: 0.9, tileY: 0.9 },
     'wood.white':         { c: 0xffffff, r: 0.50, m: 0, pat: 'grainWhite', rx: 1, ry: 1, bump: 0.012, tile: 0.9, tileY: 0.9 },
-    'wood.laminate':      { c: 0xffffff, r: 0.45, m: 0, pat: 'grainLaminate', rx: 1, ry: 1, bump: 0.012, tile: 0.9, tileY: 0.9 },
+    'wood.laminate':      { c: 0xffffff, r: 0.52, m: 0, pat: 'grainLaminate', rx: 1, ry: 1, bump: 0.012, tile: 0.9, tileY: 0.9 },
 
     /* ---- ผ้า ---- */
-    'fabric.grey':        { c: 0x787f86, r: 0.99, m: 0, pat: 'weave', rx: 3, ry: 3, bump: 0.12 },
-    'fabric.navy':        { c: 0x3a4d66, r: 0.99, m: 0, pat: 'weave', rx: 3, ry: 3, bump: 0.12 },
-    'fabric.mesh':        { c: 0x353b40, r: 0.85, m: 0.15, pat: 'mesh', rx: 3, ry: 3, bump: 0.14 },
-    'fabric.cream':       { c: 0xded8cb, r: 0.99, m: 0, pat: 'weave', rx: 3, ry: 3, bump: 0.12 },
+    'fabric.grey':        { c: 0x787f86, r: 0.99, m: 0, pat: 'weave', rx: 2, ry: 2, bump: 0.09 },
+    'fabric.navy':        { c: 0x3a4d66, r: 0.99, m: 0, pat: 'weave', rx: 2, ry: 2, bump: 0.09 },
+    'fabric.mesh':        { c: 0x333941, r: 0.90, m: 0.02, pat: 'mesh', rx: 3, ry: 3, bump: 0.14 },
+    'fabric.cream':       { c: 0xded8cb, r: 0.99, m: 0, pat: 'weave', rx: 2, ry: 2, bump: 0.09 },
 
     /* ---- พลาสติก ---- */
     'plastic.white':      { c: 0xf3f4f5, r: 0.48, m: 0, pat: 'paint', rx: 2, ry: 2 },
-    'plastic.black':      { c: 0x252a2e, r: 0.44, m: 0.12, pat: 'paint', rx: 2, ry: 2 },
-    'plastic.grey':       { c: 0x7b8188, r: 0.58, m: 0, pat: 'paint', rx: 2, ry: 2 },
+    'plastic.black':      { c: 0x23282c, r: 0.70, m: 0.03, pat: 'paint', rx: 2, ry: 2 },
+    'plastic.grey':       { c: 0x7b8188, r: 0.66, m: 0, pat: 'paint', rx: 2, ry: 2 },
 
     /* ---- อื่น ๆ ---- */
     'rubber':             { c: 0x35393c, r: 0.93, m: 0, pat: 'rubber', rx: 2, ry: 2, bump: 0.16 },
@@ -342,17 +347,17 @@
     'soil':               { c: 0x453b31, r: 1.00, m: 0, pat: 'soil', rx: 2, ry: 2, bump: 0.22 },
 
     /* ---- จอ / ไฟ / ป้าย (ไม่มี texture) ---- */
-    'screen.on':          { c: 0x141a20, r: 0.30, m: 0, e: 0x2f6f9e, ei: 0.55 },
-    'screen.off':         { c: 0x14181c, r: 0.20, m: 0.2 },
-    'led.warm':           { c: 0xfff3e0, r: 0.40, m: 0, e: 0xffe9c9, ei: 1.1 },
+    'screen.on':          { c: 0x18222c, r: 0.34, m: 0, e: 0x4d8ec0, ei: 0.45 },
+    'screen.off':         { c: 0x14181c, r: 0.62, m: 0.05 },
+    'led.warm':           { c: 0xffeed6, r: 0.40, m: 0, e: 0xffd79c, ei: 0.85 },
     'led.cool':           { c: 0xeaf4ff, r: 0.40, m: 0, e: 0xdceeff, ei: 1.0 },
     'sign.white':         { c: 0xf7f8f9, r: 0.60, m: 0 },
-    'bin.grey':           { c: 0x4e555b, r: 0.70, m: 0.2, pat: 'paint', rx: 2, ry: 2, bump: 0.03 },
-    'cable.black':        { c: 0x1c1f22, r: 0.80, m: 0 },
+    'bin.grey':           { c: 0x4e555b, r: 0.80, m: 0.05, pat: 'paint', rx: 2, ry: 2, bump: 0.03 },
+    'cable.black':        { c: 0x1c1f22, r: 0.88, m: 0 },
     'accent.orange':      { c: 0xe28a3b, r: 0.70, m: 0, pat: 'paint', rx: 2, ry: 2, bump: 0.02 },
 
     /* ---- นอกลิสต์ CONTRACT (ไม่โผล่ใน .names — เรียกได้ถ้าต้องการ) ---- */
-    'metal.perforated':   { c: 0x8e949a, r: 0.45, m: 0.70, pat: 'perf', rx: 2, ry: 2, bump: 0.40, roughMap: 1 }
+    'metal.perforated':   { c: 0x8e949a, r: 0.52, m: 0.60, pat: 'perf', rx: 2, ry: 2, bump: 0.40, roughMap: 1 }
   };
   var NAMES = [], k;
   for (k in SPEC) if (k !== 'metal.perforated') NAMES.push(k);

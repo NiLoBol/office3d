@@ -8,6 +8,7 @@
     var scene = ctx.scene;
     var plan = ctx.plan || window.OFFICE2;
     var groups = {}, colliders = [], problems = [], spaces = plan.rooms.concat([plan.corridor]);
+    var built = [];
 
     /* ชั้นสัญญาณ (path → value) — v1 contract; ไม่มี base = เดโมในเครื่อง */
     if (O.signals && !ctx.signals) {
@@ -18,6 +19,7 @@
     function add(name, res) {
       if (!res || !res.group) return null;
       groups[name] = res.group;
+      built.push(res);
       if (scene) scene.add(res.group);
       if (res.colliders) for (var i = 0; i < res.colliders.length; i++) colliders.push(res.colliders[i]);
       return res;
@@ -47,10 +49,14 @@
     var st = null;
     if (O.status) st = safe('status', function () { return O.status.build(ctx); });
 
+    /* โมดูลเสริม: ลานจอด/รถ · คนเดิน (ถ้ามีไฟล์) */
+    if (O.parking) safe('parking', function () { return O.parking.build(ctx); });
+    if (O.people) safe('people', function () { return O.people.build(ctx); });
+
     var L = null;
     if (O.lighting) L = safe('lighting', function () { return O.lighting.build(ctx); }) || null;
 
     return { groups: groups, colliders: colliders, lighting: L, status: st, signals: ctx.signals || null,
-             shellTop: shellTop, spaces: spaces, problems: problems };
+             shellTop: shellTop, spaces: spaces, problems: problems, built: built };
   };
 })();
