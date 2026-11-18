@@ -322,9 +322,10 @@
       var im = new THREE.InstancedMesh(s.g, pmat, MAX * s.per);
       im.count = 0;
       im.frustumCulled = false;
-      im.castShadow = !!s.shadow;
+      im.castShadow = false;                    /* ห้ามลง shadow map (lighting เบกครั้งเดียว → เงาจะค้าง) */
       im.receiveShadow = false;
       im.name = 'people.' + s.k;
+      im.userData.noShadow = true;
       im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       group.add(im);
       inst[s.k] = im;
@@ -354,6 +355,38 @@
       }
       for (var si2 = 0; si2 < SLOTS.length; si2++) if (inst[SLOTS[si2].k].instanceColor) inst[SLOTS[si2].k].instanceColor.needsUpdate = true;
     }
+    /* ---- เงาแต้มใต้เท้า (contact shadow) — InstancedMesh 1 ก้อน ขยับตามคนทุกเฟรม ---- */
+    var shadowMesh;
+    (function () {
+      var cv = document.createElement('canvas');
+      cv.width = 64; cv.height = 64;
+      var g2 = cv.getContext('2d');
+      var grd = g2.createRadialGradient(32, 32, 1, 32, 32, 31);
+      grd.addColorStop(0, 'rgba(0,0,0,0.98)');
+      grd.addColorStop(0.45, 'rgba(0,0,0,0.55)');
+      grd.addColorStop(0.72, 'rgba(0,0,0,0.22)');
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      g2.fillStyle = grd;
+      g2.beginPath(); g2.arc(32, 32, 31, 0, TAU); g2.fill();
+      var tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      var geo = new THREE.PlaneGeometry(0.92, 0.54);
+      geo.rotateX(-PI / 2);                                   /* ราบกับพื้น */
+      var mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.36,
+        depthWrite: false, toneMapped: false });
+      shadowMesh = new THREE.InstancedMesh(geo, mat, MAX);
+      shadowMesh.name = 'people.contactShadow';
+      shadowMesh.count = 0;
+      shadowMesh.frustumCulled = false;
+      shadowMesh.castShadow = false;
+      shadowMesh.receiveShadow = false;
+      shadowMesh.renderOrder = 3;                             /* วาดทับพื้น (depthWrite false → ไม่ z-fight) */
+      shadowMesh.userData.noShadow = true;
+      shadowMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      group.add(shadowMesh);
+    })();
+    group.userData.noShadow = true;
+
     paintAll();
 
     /* ---- ห้องที่มีที่นั่ง (meeting / training) + ประตู + ที่นั่งเรียงตามระยะจากประตู ---- */
@@ -763,6 +796,18 @@
       }
       for (k = 0; k < n; k++) updateInstances(people[k], k);
       for (k = 0; k < SLOTS.length; k++) inst[SLOTS[k].k].instanceMatrix.needsUpdate = true;
+      /* เงาใต้เท้า: y = 0.005 (ไม่ z-fight กับพื้น), ตามตำแหน่ง/ทิศ/สเกลของคน */
+      for (k = 0; k < n; k++) {
+        var qs = people[k];
+        dummy.position.set(qs.x, 0.012, qs.z);
+        dummy.rotation.set(0, qs.yaw, 0);
+        dummy.scale.set(qs.s, 1, qs.s);
+        dummy.updateMatrix();
+        shadowMesh.setMatrixAt(k, dummy.matrix);
+      }
+      shadowMesh.count = n;
+      shadowMesh.instanceMatrix.needsUpdate = true;
+      shadowMesh.userData.instances = n;
       /* world AABB ของคนทั้งกลุ่ม (ให้ตัวตรวจภายนอกใช้แทน geometry bbox ได้) */
       var wb = group.userData.bounds, mx = 0, mnx = 1e9, mnz = 1e9, mxz = -1e9, hh = 0;
       for (k = 0; k < n; k++) {
@@ -775,7 +820,7 @@
       wb.minZ = n ? mnz - 0.2 : 0; wb.maxZ = n ? mxz + 0.2 : 0;
       wb.minY = 0; wb.maxY = hh;
       group.userData.people = n;
-      group.userData.instances = n * 8;
+      group.userData.instances = n * (SLOTS.length + 1);
     }
 
     /* ---- subscribe สัญญาณ → จองใหม่ ---- */
@@ -816,8 +861,9 @@
         }
         var inst2 = 0;
         for (var si2 = 0; si2 < SLOTS.length; si2++) inst2 += SLOTS[si2].per;
+        inst2 += 1;                                        /* + contact shadow */
         return {
-          people: people.length, seated: seated, waiting: wait, max: MAX, drawCalls: SLOTS.length,
+          people: people.length, seated: seated, waiting: wait, max: MAX, drawCalls: SLOTS.length + 1,
           trisPerPerson: Math.round(trisPerPerson), instances: people.length * inst2,
           trisDrawn: Math.round(trisPerPerson * people.length),
           footY: [0, 0], bounds: group.userData.bounds
